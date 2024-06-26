@@ -1,12 +1,18 @@
 #include "game.hpp"
 #include "graphics.hpp"
+#include "mini.hpp"
 
 Graphics gfx;
+
+Mini mini;
+
+bool QUIT;
 
 void Tiles::load(int i, int j, int r)
 {
     size = HEIGHT / 10;
     colour = r;
+    monster = false;
     yco = i * size + ((HEIGHT - (4.5 * size)) / 2);
     xco = j * size + ((WIDTH - (8 * size)) / 2);
 }
@@ -114,6 +120,42 @@ void Player::animate()
     }
 }
 
+void Mini::renderMiniGame()
+{
+    SDL_SetRenderDrawColor(gfx.renderer, 0, 0, 0, 255);
+    SDL_RenderClear(gfx.renderer);
+
+    gfx.renderImage(0, HEIGHT - 207, WIDTH, 207, gfx.target);
+
+    gfx.renderImage(bar.xco, bar.yco, bar.width, bar.height, gfx.bar);
+
+    SDL_RenderPresent(gfx.renderer);
+}
+
+int Game::playMiniGame()
+{
+    mini.initialise();
+
+    bool win = false;
+    while (!win)
+    {
+        SDL_Event event;
+
+        mini.renderMiniGame();
+
+        mini.bar.moving();
+
+        if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_SPACE)
+            win = true;
+
+        if (SDL_PollEvent(&event))
+            if (quitCheck(&event))
+                return -1;
+    }
+
+    return (abs((WIDTH / 2) - mini.bar.xco));
+}
+
 void Game::generateTiles()
 {
     int r;
@@ -152,7 +194,10 @@ void Game::initialise()
     frisk.isMoving = false;
     frisk.inPuzzle = false;
 
+    miniGame = false;
     gen = false;
+
+    srand(time(0));
 
     gfx.initialise();
 }
@@ -174,6 +219,8 @@ void Game::reset(SDL_Event *event)
         frisk.frame = 0;
         frisk.time = 0;
 
+        miniGame = false;
+
         impassableX.clear();
         impassableY.clear();
         generateTiles();
@@ -193,6 +240,20 @@ bool Game::isImpassable()
         if (x1 < (x2 + w2 - 20) && x2 < (x1 + w1 - 20) && y1 < (y2 + h2 - h1) && y2 < (y1 + h1))
             return true;
     }
+    return false;
+}
+
+bool Game::isOnBridge()
+{
+    if (frisk.xco >= WIDTH / 10 && frisk.xco < tiles[0].xco && frisk.yco >= 186 && frisk.yco <= 236)
+        return true;
+    return false;
+}
+
+bool Game::isInPuzzle()
+{
+    if (frisk.xco + (frisk.width / 3) >= tiles[0].xco && frisk.yco + (frisk.height / 1.5) >= tiles[0].yco && frisk.yco + frisk.height <= tiles[40].yco + tiles[40].size)
+        return true;
     return false;
 }
 
@@ -254,58 +315,66 @@ void Game::slideAcross()
 
 bool Game::yellowTileAround(int i)
 {
-    if (tiles[i - 1].colour == 1 ||
-        tiles[i + 1].colour == 1 ||
-        tiles[i + 8].colour == 1 ||
-        tiles[i - 8].colour == 1)
+    if (((tiles[i - 1].colour == 1) && (i % 8)) ||
+        ((tiles[i + 1].colour == 1) && ((i + 1) % 8)) ||
+        ((tiles[i + 8].colour == 1) && (i < 40)) ||
+        ((tiles[i - 8].colour == 1) && (i > 7)))
         return true;
     return false;
 }
 
-void Game::tileEffect(int i)
+bool Game::tileEffect(int i)
 {
     switch (tiles[i].colour)
     {
     case 0:
         reflectBack();
-        // frisk.canMove = false;
         break;
     case 1:
-        printf("YOU GOT SHOCKED! GAME OVER\nPRESS SPACE TO RESTART\n");
+        cout << "YOU GOT SHOCKED! GAME OVER" << endl
+             << "PRESS SPACE TO RESTART" << endl;
         frisk.canMove = false;
         break;
     case 2:
-        printf("MONSTER!\n");
-        // insert minigame (pls kill me)
-        frisk.canMove = true;
+        if (!tiles[i].monster)
+        {
+            SDL_Delay(250);
+            int score = playMiniGame();
+            if (score >= 90)
+                frisk.canMove = false;
+            else if (score < 0)
+                return true;
+            else
+                frisk.canMove = true;
+        }
+        tiles[i].monster = true;
         break;
     case 3:
         frisk.orange = true;
-        printf("YOU SMELL OF ORANGES!\n");
-        frisk.canMove = true;
+        cout << "YOU SMELL OF ORANGES!" << endl;
         break;
     case 4:
         if (yellowTileAround(i))
         {
-            printf("YOU GOT SHOCKED IN WATER! GAME OVER\nPRESS SPACE TO RESTART\n");
+            cout << "YOU GOT SHOCKED IN WATER! GAME OVER" << endl
+                 << "PRESS SPACE TO RESTART" << endl;
             frisk.canMove = false;
         }
         else if (frisk.orange)
         {
-            printf("YOU WERE EATEN BY PIRANHAS! GAME OVER\nPRESS SPACE TO RESTART\n");
+            cout << "YOU WERE EATEN BY PIRANHAS!" << endl
+                 << "PRESS SPACE TO RESTART" << endl;
             frisk.canMove = false;
         }
         break;
     case 5:
         slideAcross();
-        frisk.canMove = true;
         break;
-    default:
-        frisk.canMove = true;
     }
+    return false;
 }
 
-void Game::process(SDL_Event *event)
+bool Game::process(SDL_Event *event)
 {
     frisk.time++;
 
@@ -317,26 +386,28 @@ void Game::process(SDL_Event *event)
     if (!frisk.canMove)
         frisk.move = 0;
 
-    if (frisk.xco >= tiles[0].xco)
-        frisk.inPuzzle = true;
-    else
-        frisk.inPuzzle = false;
+    if (gen && !isOnBridge() && !isInPuzzle())
+        reflectBack();
 
     for (int i = 0; i < 48; i++)
     {
         if (tileStepped(i))
-        {
-            tileEffect(i);
-        }
+            QUIT = tileEffect(i);
     }
 
     if ((frisk.xco) > (tiles[7].xco + tiles[7].size) && gen)
     {
-        printf("YOU WIN!\nPRESS SPACE TO RESTART\n");
+        cout << "YOU WIN!" << endl
+             << "PRESS SPACE TO RESTART" << endl;
         frisk.move = 0;
     }
 
-    reset(event);
+    if (SDL_PollEvent(event))
+    {
+        QUIT = quitCheck(event);
+    }
+
+    return QUIT;
 }
 
 void Game::renderPuzzle()
@@ -348,9 +419,9 @@ void Game::renderPuzzle()
         int size = tiles[i].size;
         int clr = tiles[i].colour;
 
-        SDL_SetRenderDrawColor(gfx.passRenderer(), hexCodes[clr][0], hexCodes[clr][1], hexCodes[clr][2], 255);
+        SDL_SetRenderDrawColor(gfx.renderer, hexCodes[clr][0], hexCodes[clr][1], hexCodes[clr][2], 255);
         SDL_Rect rect = {x, y, size, size};
-        SDL_RenderFillRect(gfx.passRenderer(), &rect);
+        SDL_RenderFillRect(gfx.renderer, &rect);
     }
 }
 
@@ -362,7 +433,7 @@ void Game::renderGame()
 
     gfx.renderImage(frisk.xco, frisk.yco, frisk.width, frisk.height, gfx.frisk[frisk.frame]);
 
-    SDL_RenderPresent(gfx.passRenderer());
+    SDL_RenderPresent(gfx.renderer);
 }
 
 bool Game::quitCheck(SDL_Event *event)
@@ -389,23 +460,16 @@ void Game::end()
 
 void Game::playGame()
 {
-    initialise();
-
     // main game loop
-    bool quit = false;
-    while (!quit)
+    QUIT = false;
+    while (!QUIT)
     {
         SDL_Event event;
 
         renderGame();
 
-        process(&event);
+        QUIT = process(&event);
 
-        if (SDL_PollEvent(&event))
-        {
-            quit = quitCheck(&event);
-        }
+        reset(&event);
     }
-
-    end();
 }

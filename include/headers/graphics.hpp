@@ -17,6 +17,9 @@ public:
     SDL_Texture *background;
     SDL_Texture *frisk[12];
 
+    SDL_Texture *target;
+    SDL_Texture *bar;
+
     SDL_Window *window;
     SDL_Renderer *renderer;
 
@@ -25,8 +28,6 @@ public:
     void initialise();
 
     void renderImage(int x, int y, int w, int h, SDL_Texture *texture);
-
-    SDL_Renderer *passRenderer();
 
     void destroy();
 };

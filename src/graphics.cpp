@@ -25,6 +25,9 @@ void Graphics::initialise()
                                   SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
     background = loadTexture("graphics/background.png");
+    target = loadTexture("graphics/target.png");
+    bar = loadTexture("graphics/bar.png");
+
     frisk[0] = loadTexture("graphics/frisk1.png");
     frisk[1] = loadTexture("graphics/frisk2.png");
     frisk[2] = loadTexture("graphics/frisk3.png");
@@ -45,17 +48,14 @@ void Graphics::renderImage(int x, int y, int w, int h, SDL_Texture *texture)
     SDL_RenderCopy(renderer, texture, NULL, &rect);
 }
 
-SDL_Renderer *Graphics::passRenderer()
-{
-    return renderer;
-}
-
 void Graphics::destroy()
 {
     SDL_DestroyTexture(background);
+    SDL_DestroyTexture(target);
+    SDL_DestroyTexture(bar);
     for (int i = 0; i < 12; i++)
         SDL_DestroyTexture(frisk[i]);
-
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
+    IMG_Quit();
 }

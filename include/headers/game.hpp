@@ -16,6 +16,7 @@ class Tiles
 public:
     int xco, yco, size;
     int colour;
+    bool monster;
 
     void load(int i, int j, int r);
 };
@@ -39,7 +40,7 @@ class Game
 public:
     Tiles tiles[48];
     Player frisk;
-    bool gen;
+    bool gen, miniGame;
     vector<int> impassableX;
     vector<int> impassableY;
 
@@ -54,17 +55,21 @@ public:
 
     bool isImpassable();
 
+    bool isOnBridge();
+
+    bool isInPuzzle();
+
     bool tileStepped(int i);
 
     bool yellowTileAround(int i);
 
-    void tileEffect(int i);
+    bool tileEffect(int i);
 
     void reflectBack();
 
     void slideAcross();
 
-    void process(SDL_Event *event);
+    bool process(SDL_Event *event);
 
     void renderPuzzle();
 
@@ -73,6 +78,8 @@ public:
     bool quitCheck(SDL_Event *event);
 
     void playGame();
+
+    int playMiniGame();
 
     void end();
 };
