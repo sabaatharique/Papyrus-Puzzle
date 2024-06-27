@@ -19,6 +19,8 @@ public:
 
     SDL_Texture *target;
     SDL_Texture *bar;
+    SDL_Texture *grid;
+    SDL_Texture *monster[3];
 
     SDL_Window *window;
     SDL_Renderer *renderer;

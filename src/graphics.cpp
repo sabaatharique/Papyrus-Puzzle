@@ -27,6 +27,11 @@ void Graphics::initialise()
     background = loadTexture("graphics/background.png");
     target = loadTexture("graphics/target.png");
     bar = loadTexture("graphics/bar.png");
+    grid = loadTexture("graphics/grid.png");
+
+    monster[0] = loadTexture("graphics/froggit1.png");
+    monster[1] = loadTexture("graphics/froggit2.png");
+    monster[2] = loadTexture("graphics/froggit3.png");
 
     frisk[0] = loadTexture("graphics/frisk1.png");
     frisk[1] = loadTexture("graphics/frisk2.png");
@@ -53,8 +58,14 @@ void Graphics::destroy()
     SDL_DestroyTexture(background);
     SDL_DestroyTexture(target);
     SDL_DestroyTexture(bar);
+    SDL_DestroyTexture(grid);
+
+    for (int j = 0; j < 3; j++)
+        SDL_DestroyTexture(monster[j]);
+
     for (int i = 0; i < 12; i++)
         SDL_DestroyTexture(frisk[i]);
+
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     IMG_Quit();

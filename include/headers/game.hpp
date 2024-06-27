@@ -40,12 +40,18 @@ class Game
 public:
     Tiles tiles[48];
     Player frisk;
-    bool gen, miniGame;
+    int res;
+    bool gen, miniGame, gameWin, gameOver;
     vector<int> impassableX;
     vector<int> impassableY;
 
-    // const char clr[7][10] = {"red", "yellow", "green", "orange", "blue", "purple", "pink"};
-    const int hexCodes[7][3] = {{255, 25, 0}, {255, 233, 0}, {0, 194, 0}, {255, 140, 40}, {0, 16, 255}, {134, 19, 128}, {240, 90, 100}};
+    const int hexCodes[7][3] = {{255, 25, 0},
+                                {255, 233, 0},
+                                {0, 194, 0},
+                                {255, 140, 40},
+                                {0, 16, 255},
+                                {134, 19, 128},
+                                {240, 90, 100}};
 
     void generateTiles();
 

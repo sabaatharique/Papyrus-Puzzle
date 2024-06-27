@@ -1,10 +1,13 @@
 #include "game.hpp"
 #include "graphics.hpp"
 #include "mini.hpp"
+#include "typo.hpp"
 
 Graphics gfx;
 
 Mini mini;
+
+Typography txt;
 
 bool QUIT;
 
@@ -125,11 +128,41 @@ void Mini::renderMiniGame()
     SDL_SetRenderDrawColor(gfx.renderer, 0, 0, 0, 255);
     SDL_RenderClear(gfx.renderer);
 
-    gfx.renderImage(0, HEIGHT - 207, WIDTH, 207, gfx.target);
+    SDL_SetRenderDrawColor(gfx.renderer, 255, 255, 255, 255);
+    SDL_Rect rect = {80, HEIGHT - 236, WIDTH - 160, 176};
+    SDL_RenderFillRect(gfx.renderer, &rect);
+
+    SDL_SetRenderDrawColor(gfx.renderer, 0, 0, 0, 255);
+    rect = {85, HEIGHT - 231, WIDTH - 170, 166};
+    SDL_RenderFillRect(gfx.renderer, &rect);
+
+    gfx.renderImage(30, HEIGHT - 510, WIDTH - 60, 274, gfx.grid);
+
+    gfx.renderImage(froggit.xco, froggit.yco, froggit.width, froggit.height, gfx.monster[froggit.frame]);
+
+    gfx.renderImage(90, HEIGHT - 236, WIDTH - 180, 176, gfx.target);
 
     gfx.renderImage(bar.xco, bar.yco, bar.width, bar.height, gfx.bar);
 
     SDL_RenderPresent(gfx.renderer);
+}
+
+void Typography::renderText(int x, int y, float size, string str, SDL_Color colour, TTF_Font *font, SDL_Texture *texture)
+{
+    SDL_Surface *surface = TTF_RenderText_Solid(font, &str[0], colour);
+    if (surface == NULL)
+    {
+        printf("Error: could not create '%s' text surface.\n%s\n", str, TTF_GetError());
+        SDL_Quit();
+        exit(1);
+    }
+    texture = SDL_CreateTextureFromSurface(gfx.renderer, surface);
+    SDL_FreeSurface(surface);
+
+    int w = size * surface->w;
+    int h = size * surface->h;
+    SDL_Rect rect = {x - (w / 2), y, w, h};
+    SDL_RenderCopy(gfx.renderer, texture, NULL, &rect);
 }
 
 int Game::playMiniGame()
@@ -145,6 +178,8 @@ int Game::playMiniGame()
 
         mini.bar.moving();
 
+        mini.process(&event);
+
         if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_SPACE)
             win = true;
 
@@ -152,7 +187,7 @@ int Game::playMiniGame()
             if (quitCheck(&event))
                 return -1;
     }
-
+    SDL_Delay(500);
     return (abs((WIDTH / 2) - mini.bar.xco));
 }
 
@@ -196,10 +231,15 @@ void Game::initialise()
 
     miniGame = false;
     gen = false;
+    gameOver = false;
+    gameWin = false;
+
+    res = -1;
 
     srand(time(0));
 
     gfx.initialise();
+    txt.initialise();
 }
 
 void Game::reset(SDL_Event *event)
@@ -220,6 +260,10 @@ void Game::reset(SDL_Event *event)
         frisk.time = 0;
 
         miniGame = false;
+        gameOver = false;
+        gameWin = false;
+
+        res = -1;
 
         impassableX.clear();
         impassableY.clear();
@@ -331,8 +375,8 @@ bool Game::tileEffect(int i)
         reflectBack();
         break;
     case 1:
-        cout << "YOU GOT SHOCKED! GAME OVER" << endl
-             << "PRESS SPACE TO RESTART" << endl;
+        res = 1;
+        gameOver = true;
         frisk.canMove = false;
         break;
     case 2:
@@ -341,7 +385,11 @@ bool Game::tileEffect(int i)
             SDL_Delay(250);
             int score = playMiniGame();
             if (score >= 90)
+            {
+                res = 2;
                 frisk.canMove = false;
+                gameOver = true;
+            }
             else if (score < 0)
                 return true;
             else
@@ -351,19 +399,18 @@ bool Game::tileEffect(int i)
         break;
     case 3:
         frisk.orange = true;
-        cout << "YOU SMELL OF ORANGES!" << endl;
         break;
     case 4:
         if (yellowTileAround(i))
         {
-            cout << "YOU GOT SHOCKED IN WATER! GAME OVER" << endl
-                 << "PRESS SPACE TO RESTART" << endl;
+            res = 3;
+            gameOver = true;
             frisk.canMove = false;
         }
         else if (frisk.orange)
         {
-            cout << "YOU WERE EATEN BY PIRANHAS!" << endl
-                 << "PRESS SPACE TO RESTART" << endl;
+            res = 4;
+            gameOver = true;
             frisk.canMove = false;
         }
         break;
@@ -383,9 +430,6 @@ bool Game::process(SDL_Event *event)
     if (!isImpassable())
         frisk.process();
 
-    if (!frisk.canMove)
-        frisk.move = 0;
-
     if (gen && !isOnBridge() && !isInPuzzle())
         reflectBack();
 
@@ -395,10 +439,15 @@ bool Game::process(SDL_Event *event)
             QUIT = tileEffect(i);
     }
 
+    if (!frisk.canMove)
+    {
+        frisk.move = 0;
+    }
+
     if ((frisk.xco) > (tiles[7].xco + tiles[7].size) && gen)
     {
-        cout << "YOU WIN!" << endl
-             << "PRESS SPACE TO RESTART" << endl;
+        res = 0;
+        gameWin = true;
         frisk.move = 0;
     }
 
@@ -433,7 +482,21 @@ void Game::renderGame()
 
     gfx.renderImage(frisk.xco, frisk.yco, frisk.width, frisk.height, gfx.frisk[frisk.frame]);
 
+    if (gameWin)
+    {
+        txt.renderText(WIDTH / 2, 10, 1, "YOU WIN!", {255, 255, 255}, txt.DTM, txt.text1);
+        txt.renderText(WIDTH / 2, 80, 0.4, txt.res[res], {175, 175, 175}, txt.DTM, txt.text2);
+    }
+
+    if (gameOver)
+    {
+        txt.renderText(WIDTH / 2, 10, 1, "GAME OVER", {255, 255, 255}, txt.DTM, txt.text1);
+        txt.renderText(WIDTH / 2, 80, 0.4, txt.res[res], {175, 175, 175}, txt.DTM, txt.text2);
+    }
+
     SDL_RenderPresent(gfx.renderer);
+
+    txt.refresh();
 }
 
 bool Game::quitCheck(SDL_Event *event)
@@ -456,6 +519,7 @@ bool Game::quitCheck(SDL_Event *event)
 void Game::end()
 {
     gfx.destroy();
+    txt.destroy();
 }
 
 void Game::playGame()

@@ -20,15 +20,26 @@ public:
     void moving();
 };
 
+class Monster
+{
+public:
+    float xco, yco;
+    int height, width, frame;
+};
+
 class Mini
 {
 public:
     Target bar;
+    Monster froggit;
     bool win;
+    int time;
 
     void initialise();
 
     void renderMiniGame();
+
+    void process(SDL_Event *event);
 };
 
 #endif
