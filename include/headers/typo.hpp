@@ -11,7 +11,7 @@ using namespace std;
 class Typography
 {
 public:
-    SDL_Texture *text1, *text2;
+    SDL_Texture *text1, *text2, *text3;
     TTF_Font *DTM, *Papyrus;
 
     const char res[5][35] = {"For this time...",

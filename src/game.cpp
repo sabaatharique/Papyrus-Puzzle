@@ -2,12 +2,15 @@
 #include "graphics.hpp"
 #include "mini.hpp"
 #include "typo.hpp"
+#include "music.hpp"
 
 Graphics gfx;
 
-Mini mini;
+Music sfx;
 
 Typography txt;
+
+Mini mini;
 
 bool QUIT;
 
@@ -167,6 +170,9 @@ void Typography::renderText(int x, int y, float size, string str, SDL_Color colo
 
 int Game::playMiniGame()
 {
+    Mix_PauseMusic();
+    Mix_PlayChannel(-1, sfx.EnemyApproaching, -1);
+
     mini.initialise();
 
     bool win = false;
@@ -183,10 +189,13 @@ int Game::playMiniGame()
         if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_SPACE)
             win = true;
 
-        if (SDL_PollEvent(&event))
-            if (quitCheck(&event))
-                return -1;
+        if (SDL_PollEvent(&event) && quitCheck(&event))
+            return -1;
     }
+
+    Mix_HaltChannel(-1);
+    Mix_ResumeMusic();
+
     SDL_Delay(500);
     return (abs((WIDTH / 2) - mini.bar.xco));
 }
@@ -239,6 +248,7 @@ void Game::initialise()
     srand(time(0));
 
     gfx.initialise();
+    sfx.initialise();
     txt.initialise();
 }
 
@@ -384,7 +394,7 @@ bool Game::tileEffect(int i)
         {
             SDL_Delay(250);
             int score = playMiniGame();
-            if (score >= 90)
+            if (score >= 50)
             {
                 res = 2;
                 frisk.canMove = false;
@@ -456,6 +466,9 @@ bool Game::process(SDL_Event *event)
         QUIT = quitCheck(event);
     }
 
+    if (event->type == SDL_KEYDOWN && event->key.keysym.sym == SDLK_m)
+        printf("no manual bozo we die like MEN\n");
+
     return QUIT;
 }
 
@@ -477,6 +490,8 @@ void Game::renderPuzzle()
 void Game::renderGame()
 {
     gfx.renderImage(0, 0, WIDTH, HEIGHT, gfx.background);
+
+    txt.renderText(WIDTH / 2, HEIGHT - 40, 0.3, "SPACE - Re/Start, M - Manual", {175, 175, 175}, txt.DTM, txt.text3);
 
     renderPuzzle();
 
@@ -519,11 +534,14 @@ bool Game::quitCheck(SDL_Event *event)
 void Game::end()
 {
     gfx.destroy();
+    sfx.destroy();
     txt.destroy();
 }
 
 void Game::playGame()
 {
+    Mix_PlayMusic(sfx.Bonetrousle, -1);
+
     // main game loop
     QUIT = false;
     while (!QUIT)
